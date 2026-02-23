@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Perspective Matrix Interactive Demo</title>
+
+<style>
+body{
+    font-family: Arial;
+    background:#f4f6f9;
+    text-align:center;
+}
+
+h1{
+    margin-top:20px;
+}
+
+.container{
+    display:flex;
+    justify-content:center;
+    gap:40px;
+    margin-top:20px;
+}
+
+canvas{
+    border:2px solid #444;
+    background:white;
+}
+
+.matrix{
+    background:white;
+    padding:20px;
+    border-radius:10px;
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+}
+
+.matrix input{
+    width:60px;
+    margin:5px;
+    text-align:center;
+}
+
+button{
+    margin-top:15px;
+    padding:8px 15px;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Perspective Transformation (Homography) Matrix Demo</h1>
+
+<div class="container">
+
+<canvas id="canvas" width="500" height="500"></canvas>
+
+<div class="matrix">
+<h3>3×3 Perspective Matrix</h3>
+
+<div>
+<input id="a11" value="1">
+<input id="a12" value="0">
+<input id="a13" value="0"><br>
+
+<input id="a21" value="0">
+<input id="a22" value="1">
+<input id="a23" value="0"><br>
+
+<input id="a31" value="0">
+<input id="a32" value="0">
+<input value="1" disabled>
+</div>
+
+<button onclick="applyTransform()">Apply</button>
+<button onclick="resetMatrix()">Reset</button>
+
+<p><strong>Try:</strong><br>
+Set a31 or a32 to small values like 0.001</p>
+
+</div>
+
+</div>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+const size = 150;
+
+// Draw original grid
+function drawOriginal(){
+    ctx.clearRect(0,0,500,500);
+    ctx.strokeStyle="#ddd";
+
+    for(let i=-250;i<=250;i+=50){
+        ctx.beginPath();
+        ctx.moveTo(i+250,0);
+        ctx.lineTo(i+250,500);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(0,i+250);
+        ctx.lineTo(500,i+250);
+        ctx.stroke();
+    }
+}
+
+// Apply perspective transformation
+function applyTransform(){
+
+    drawOriginal();
+
+    const a11 = parseFloat(a11Input.value);
+    const a12 = parseFloat(a12Input.value);
+    const a13 = parseFloat(a13Input.value);
+    const a21 = parseFloat(a21Input.value);
+    const a22 = parseFloat(a22Input.value);
+    const a23 = parseFloat(a23Input.value);
+    const a31 = parseFloat(a31Input.value);
+    const a32 = parseFloat(a32Input.value);
+
+    ctx.strokeStyle="blue";
+    ctx.beginPath();
+
+    const steps = 40;
+
+    for(let i=0;i<=steps;i++){
+        let x = -size + (2*size/steps)*i;
+
+        let y = -size;
+        let [nx,ny] = transform(x,y);
+        if(i===0) ctx.moveTo(nx+250,ny+250);
+        else ctx.lineTo(nx+250,ny+250);
+    }
+
+    for(let i=0;i<=steps;i++){
+        let y = -size + (2*size/steps)*i;
+        let x = size;
+        let [nx,ny] = transform(x,y);
+        ctx.lineTo(nx+250,ny+250);
+    }
+
+    for(let i=0;i<=steps;i++){
+        let x = size - (2*size/steps)*i;
+        let y = size;
+        let [nx,ny] = transform(x,y);
+        ctx.lineTo(nx+250,ny+250);
+    }
+
+    for(let i=0;i<=steps;i++){
+        let y = size - (2*size/steps)*i;
+        let x = -size;
+        let [nx,ny] = transform(x,y);
+        ctx.lineTo(nx+250,ny+250);
+    }
+
+    ctx.closePath();
+    ctx.stroke();
+
+    function transform(x,y){
+        let w = a31*x + a32*y + 1;
+
+        let nx = (a11*x + a12*y + a13)/w;
+        let ny = (a21*x + a22*y + a23)/w;
+
+        return [nx,ny];
+    }
+}
+
+function resetMatrix(){
+    a11Input.value=1;
+    a12Input.value=0;
+    a13Input.value=0;
+    a21Input.value=0;
+    a22Input.value=1;
+    a23Input.value=0;
+    a31Input.value=0;
+    a32Input.value=0;
+    applyTransform();
+}
+
+const a11Input = document.getElementById("a11");
+const a12Input = document.getElementById("a12");
+const a13Input = document.getElementById("a13");
+const a21Input = document.getElementById("a21");
+const a22Input = document.getElementById("a22");
+const a23Input = document.getElementById("a23");
+const a31Input = document.getElementById("a31");
+const a32Input = document.getElementById("a32");
+
+drawOriginal();
+applyTransform();
+
+</script>
+
+</body>
+</html>

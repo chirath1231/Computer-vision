@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Affine & Perspective Transformation Demo</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --font:'Nunito',sans-serif; --mono:'JetBrains Mono',monospace;
+  --shadow:0 4px 24px rgba(0,0,0,0.09); --r:14px;
+  --blue:#2563eb; --blue-l:#dbeafe; --blue-d:#1e40af;
+  --orange:#ea580c; --orange-l:#ffedd5; --orange-d:#9a3412;
+  --green:#16a34a; --red:#dc2626;
+  --bg:#f1f5f9; --white:#fff; --gray:#64748b; --gl:#e2e8f0; --gbg:#f8fafc;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);background:var(--bg);min-height:100vh;color:#1e293b}
+
+/* ── Header ── */
+.hdr{background:linear-gradient(135deg,#1e3a8a,#2563eb);color:#fff;
+  padding:16px 28px;display:flex;align-items:center;gap:14px;
+  box-shadow:0 2px 16px rgba(37,99,235,.3)}
+.hdr h1{font-size:1.45rem;font-weight:800;letter-spacing:-.02em}
+.hdr p{font-size:.8rem;opacity:.7;margin-top:2px}
+.badges{margin-left:auto;display:flex;gap:8px}
+.badge{background:rgba(255,255,255,.18);border-radius:20px;padding:4px 13px;
+  font-size:.72rem;font-weight:800;letter-spacing:.06em}
+
+/* ── Tab bar ── */
+#tab-bar{display:flex;padding:18px 20px 0;max-width:1200px;margin:0 auto}
+.tab-btn{padding:11px 32px;font-family:var(--font);font-size:.92rem;font-weight:800;
+  border:2px solid var(--gl);background:var(--white);cursor:pointer;
+  transition:all .2s;letter-spacing:.02em;color:var(--gray)}
+.tab-btn:first-child{border-radius:10px 0 0 10px}
+.tab-btn:last-child{border-radius:0 10px 10px 0;border-left:none}
+.tab-btn.ta{background:var(--blue);border-color:var(--blue);color:#fff}
+.tab-btn.tp{background:var(--orange);border-color:var(--orange);color:#fff}
+
+/* ── Pages ── */
+.page{display:none;padding-bottom:48px}
+.page.active{display:block}
+
+/* ── Shared layout ── */
+.layout{display:grid;grid-template-columns:290px 1fr 272px;
+  gap:18px;max-width:1200px;margin:18px auto;padding:0 18px}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+
+/* ── Card ── */
+.card{background:var(--white);border-radius:var(--r);box-shadow:var(--shadow);
+  padding:18px;border:1.5px solid var(--gl);margin-bottom:16px}
+.card:last-child{margin-bottom:0}
+
+/* Section title — color set per-page via .blue/.orange class */
+.ct{font-size:.68rem;font-weight:800;text-transform:uppercase;letter-spacing:.12em;
+  margin-bottom:14px;display:flex;align-items:center;gap:6px}
+.ct::before{content:'';display:block;width:3px;height:13px;border-radius:2px;background:currentColor}
+.ct.blue{color:var(--blue)}
+.ct.orange{color:var(--orange)}
+
+/* ── Sliders ── */
+.cg{margin-bottom:12px}
+.crow{display:flex;justify-content:space-between;align-items:center;margin-bottom:4px}
+.clabel{font-size:.81rem;font-weight:700;color:#374151}
+.cval{font-family:var(--mono);font-size:.75rem;background:var(--gbg);
+  padding:2px 9px;border-radius:5px;min-width:54px;text-align:center;
+  font-weight:700;border:1.5px solid var(--gl)}
+.cval.blue{color:var(--blue)}
+.cval.orange{color:var(--orange)}
+input[type=range]{width:100%;cursor:pointer;height:4px}
+input[type=range].blue{accent-color:var(--blue)}
+input[type=range].orange{accent-color:var(--orange)}
+.divider{height:1px;background:var(--gl);margin:12px 0}
+
+/* ── Shape / toggle buttons ── */
+.shape-row{display:flex;gap:5px;flex-wrap:wrap}
+.sbtn{padding:5px 12px;border-radius:6px;border:1.5px solid var(--gl);
+  background:var(--gbg);font-family:var(--font);font-size:.74rem;font-weight:700;
+  cursor:pointer;transition:all .15s;color:var(--gray)}
+.sbtn.active.blue{background:var(--blue-l);border-color:var(--blue);color:var(--blue)}
+.sbtn.active.orange{background:var(--orange-l);border-color:var(--orange);color:var(--orange)}
+
+/* ── Buttons ── */
+.btn-row{display:flex;gap:8px;margin-top:12px}
+.btn{flex:1;padding:9px 0;border-radius:8px;border:none;font-family:var(--font);
+  font-size:.83rem;font-weight:800;cursor:pointer;transition:all .15s;letter-spacing:.02em}
+.btn:active{transform:scale(.97)}
+.btn-blue{background:var(--blue);color:#fff}
+.btn-orange{background:var(--orange);color:#fff}
+.btn-s{background:var(--gl);color:var(--gray)}
+
+/* ── Canvas ── */
+canvas{display:block;border-radius:12px;border:2px solid var(--gl);
+  width:100%;height:auto;cursor:crosshair;box-shadow:var(--shadow);background:#fff}
+.hint-row{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;
+  margin-top:8px;font-size:.72rem;color:var(--gray)}
+.hdot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle}
+
+/* ── Matrix display ── */
+.mat-wrap{background:var(--gbg);border-radius:10px;padding:14px 16px;
+  border:1.5px solid var(--gl);font-family:var(--mono);font-size:.82rem;
+  line-height:2;margin-bottom:12px}
+.mrow{display:flex;align-items:center;gap:3px;margin:2px 0}
+.mbracket{font-size:2.2rem;color:#94a3b8;line-height:1;font-weight:300;padding:0 2px}
+.mcell{min-width:56px;text-align:center;padding:3px 4px;border-radius:5px;font-weight:700;font-size:.8rem}
+.mcell.hi-blue{background:var(--blue-l);color:var(--blue-d)}
+.mcell.hi-orange{background:var(--orange-l);color:var(--orange-d)}
+.mcell.faded{opacity:.28}
+
+.dof-badge{display:inline-block;padding:3px 11px;border-radius:20px;font-size:.7rem;
+  font-weight:800;letter-spacing:.06em;margin-bottom:12px}
+.dof-badge.blue{background:var(--blue-l);color:var(--blue-d)}
+.dof-badge.orange{background:var(--orange-l);color:var(--orange-d)}
+
+/* ── Formula box ── */
+.formula{font-size:.72rem;color:var(--gray);line-height:1.9;background:var(--gbg);
+  border-radius:8px;padding:10px 12px;border:1.5px solid var(--gl);font-family:var(--mono)}
+.formula .fv-blue{color:var(--blue);font-weight:700}
+.formula .fv-orange{color:var(--orange);font-weight:700}
+
+/* ── Properties ── */
+.props{display:flex;flex-direction:column;gap:6px}
+.prop{display:flex;align-items:center;gap:8px;font-size:.78rem;padding:7px 11px;border-radius:8px;font-weight:600}
+.prop.yes{background:#dcfce7;color:#15803d}
+.prop.no{background:#fee2e2;color:#b91c1c}
+
+/* ── Coords table ── */
+.ctbl{width:100%;border-collapse:collapse;font-size:.75rem;font-family:var(--mono)}
+.ctbl th{text-align:left;color:var(--gray);font-weight:800;padding:3px 6px;
+  font-family:var(--font);font-size:.65rem;text-transform:uppercase;
+  letter-spacing:.08em;border-bottom:1.5px solid var(--gl)}
+.ctbl td{padding:5px 6px;border-bottom:1px solid var(--gbg);vertical-align:middle}
+.ptag{display:inline-block;width:18px;height:18px;border-radius:50%;
+  color:#fff;text-align:center;line-height:18px;font-size:.65rem;font-weight:800}
+
+/* ── Presets ── */
+.presets{display:flex;flex-wrap:wrap;gap:5px}
+.pre{padding:5px 11px;border-radius:6px;border:1.5px solid var(--gl);
+  background:var(--gbg);font-family:var(--font);font-size:.73rem;
+  font-weight:700;cursor:pointer;transition:all .15s;color:var(--gray)}
+.pre.blue:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l)}
+.pre.orange:hover{border-color:var(--orange);color:var(--orange);background:var(--orange-l)}
+
+/* ── Step bar (affine only) ── */
+.step-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.step-badge{padding:4px 10px;border-radius:6px;font-size:.72rem;font-weight:800;
+  border:1.5px solid var(--gl);background:var(--gbg);color:var(--gray);cursor:pointer;transition:all .15s}
+.step-badge.on{background:var(--blue-l);border-color:var(--blue);color:var(--blue)}
+
+/* ── Info box ── */
+.info-box{background:var(--orange-l);border:1.5px solid #fed7aa;border-radius:10px;
+  padding:12px 14px;font-size:.78rem;color:#7c2d12;line-height:1.7}
+.info-box strong{color:var(--orange-d)}
+</style>
+</head>
+<body>
+
+<!-- ══ HEADER ══ -->
+<div class="hdr">
+  <div>
+    <h1>✦ Affine &amp; Perspective Transform</h1>
+    <p>Interactive Computer Vision Teaching Tool</p>
+  </div>
+  <div class="badges">
+    <span class="badge">Affine · 2×3 · 6 DOF</span>
+    <span class="badge">Perspective · 3×3 · 8 DOF</span>
+  </div>
+</div>
+
+<!-- ══ TABS ══ -->
+<div id="tab-bar">
+  <button class="tab-btn ta" id="tabA" onclick="switchTab('affine')">✦ Affine Transformation</button>
+  <button class="tab-btn" id="tabP" onclick="switchTab('persp')">◈ Perspective Transformation</button>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     AFFINE PAGE
+══════════════════════════════════════════════ -->
+<div id="affine-page" class="page active">
+<div class="layout">
+
+  <!-- LEFT -->
+  <div>
+    <div class="card">
+      <div class="ct blue">Transform Controls</div>
+      <div class="cg"><div class="crow"><span class="clabel">Translate X</span><span class="cval blue" id="vTx">0 px</span></div><input type="range" class="blue" id="tx" min="-200" max="200" value="0"></div>
+      <div class="cg"><div class="crow"><span class="clabel">Translate Y</span><span class="cval blue" id="vTy">0 px</span></div><input type="range" class="blue" id="ty" min="-200" max="200" value="0"></div>
+      <div class="cg"><div class="crow"><span class="clabel">Scale X</span><span class="cval blue" id="vSx">1.00</span></div><input type="range" class="blue" id="sx" min="0.1" max="3" step="0.05" value="1"></div>
+      <div class="cg"><div class="crow"><span class="clabel">Scale Y</span><span class="cval blue" id="vSy">1.00</span></div><input type="range" class="blue" id="sy" min="0.1" max="3" step="0.05" value="1"></div>
+      <div class="cg"><div class="crow"><span class="clabel">Rotation</span><span class="cval blue" id="vRot">0°</span></div><input type="range" class="blue" id="rot" min="-180" max="180" value="0"></div>
+      <div class="cg"><div class="crow"><span class="clabel">Shear X</span><span class="cval blue" id="vShx">0.00</span></div><input type="range" class="blue" id="shx" min="-1.5" max="1.5" step="0.05" value="0"></div>
+      <div class="cg"><div class="crow"><span class="clabel">Shear Y</span><span class="cval blue" id="vShy">0.00</span></div><input type="range" class="blue" id="shy" min="-1.5" max="1.5" step="0.05" value="0"></div>
+      <div class="divider"></div>
+      <div class="ct blue">Shape</div>
+      <div class="shape-row">
+        <button class="sbtn active blue" onclick="aSetShape('square')">Square</button>
+        <button class="sbtn blue" onclick="aSetShape('triangle')">Triangle</button>
+        <button class="sbtn blue" onclick="aSetShape('house')">House</button>
+        <button class="sbtn blue" onclick="aSetShape('arrow')">Arrow</button>
+        <button class="sbtn blue" onclick="aSetShape('letter')">Letter F</button>
+      </div>
+      <div class="divider"></div>
+      <div class="ct blue">Display Options</div>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="showGhost" checked> Show original (ghost)</label>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="showGrid" checked> Show grid</label>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="showAxes" checked> Show axes</label>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="showVectors" checked> Show transform vectors</label>
+      <div class="btn-row">
+        <button class="btn btn-blue" onclick="aReset()">⟳ Reset</button>
+        <button class="btn btn-s" onclick="aRandom()">⚄ Random</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ct blue">Presets</div>
+      <div class="presets" id="aPresetsDiv"></div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div>
+    <div class="step-bar">
+      <span style="font-size:.73rem;font-weight:800;color:var(--gray)">Isolate step:</span>
+      <button class="step-badge on" id="step-all" onclick="aSetStep('all')">All</button>
+      <button class="step-badge" id="step-scale" onclick="aSetStep('scale')">Scale</button>
+      <button class="step-badge" id="step-rotate" onclick="aSetStep('rotate')">Rotate</button>
+      <button class="step-badge" id="step-shear" onclick="aSetStep('shear')">Shear</button>
+      <button class="step-badge" id="step-translate" onclick="aSetStep('translate')">Translate</button>
+    </div>
+    <canvas id="aCvs" width="620" height="520"></canvas>
+    <div class="hint-row">
+      <span><span class="hdot" style="background:#2563eb"></span>Original</span>
+      <span><span class="hdot" style="background:#16a34a"></span>Transformed</span>
+      <span><span class="hdot" style="background:#dc2626"></span>Origin point</span>
+      <span><span class="hdot" style="background:#f59e0b"></span>Drag handles</span>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div>
+    <div class="card">
+      <div class="ct blue">Affine Matrix</div>
+      <span class="dof-badge blue">2×3 Matrix · 6 DOF</span>
+      <div class="mat-wrap" id="aMatBox"></div>
+      <div class="formula" id="aFormulaBox"></div>
+    </div>
+    <div class="card">
+      <div class="ct blue">Geometric Properties</div>
+      <div class="props" id="aPropsBox"></div>
+    </div>
+    <div class="card">
+      <div class="ct blue">Corner Coordinates</div>
+      <table class="ctbl"><thead><tr><th>Pt</th><th>Original</th><th>Transformed</th></tr></thead><tbody id="aCoordBody"></tbody></table>
+    </div>
+    <div class="card">
+      <div class="ct blue">Decomposition</div>
+      <div id="aDecompBox" style="font-size:.76rem;line-height:2;color:#374151"></div>
+    </div>
+  </div>
+
+</div>
+</div><!-- /affine-page -->
+
+
+<!-- ══════════════════════════════════════════════
+     PERSPECTIVE PAGE  (same light theme, orange)
+══════════════════════════════════════════════ -->
+<div id="persp-page" class="page">
+<div class="layout">
+
+  <!-- LEFT -->
+  <div>
+    <div class="card">
+      <div class="ct orange">Drag Corner Points</div>
+      <p style="font-size:.8rem;color:var(--gray);line-height:1.65;margin-bottom:14px">
+        Drag the <strong style="color:var(--orange)">4 corner handles</strong> on the canvas to define the perspective warp. The 3×3 homography is computed automatically via <strong>DLT</strong>.
+      </p>
+      <div class="divider"></div>
+      <div class="ct orange">Display Options</div>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="pShowSrc" checked> Show source quad</label>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="pShowGrid" checked> Show grid</label>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="pShowAxes" checked> Show axes</label>
+      <label style="font-size:.8rem;font-weight:700;display:flex;align-items:center;gap:8px;cursor:pointer;margin-top:8px"><input type="checkbox" id="pShowVanish" checked> Show vanishing lines</label>
+      <div class="btn-row">
+        <button class="btn btn-orange" onclick="pReset()">⟳ Reset</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ct orange">Presets</div>
+      <div class="presets" id="pPresetsDiv"></div>
+    </div>
+
+    <div class="card">
+      <div class="ct orange">Key Difference</div>
+      <div class="info-box">
+        Unlike affine transforms, perspective maps rectangles to <strong>trapezoids</strong>.<br><br>
+        • Parallel lines <strong>are NOT preserved</strong><br>
+        • Scale changes with <strong>depth</strong><br>
+        • Needs full <strong>3×3 homogeneous matrix</strong><br>
+        • P₃₁, P₃₂ ≠ 0 creates true perspective
+      </div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div>
+    <div class="step-bar">
+      <span style="font-size:.73rem;font-weight:800;color:var(--gray)">Canvas:</span>
+      <span style="font-size:.73rem;color:var(--gray)">Drag the 4 numbered handles to warp</span>
+    </div>
+    <canvas id="pCvs" width="620" height="520"></canvas>
+    <div class="hint-row">
+      <span><span class="hdot" style="background:#2563eb"></span>Source quad</span>
+      <span><span class="hdot" style="background:#ea580c"></span>Drag handles</span>
+      <span><span class="hdot" style="background:#16a34a"></span>Warped result</span>
+      <span><span class="hdot" style="background:#94a3b8"></span>Vanishing lines</span>
+    </div>
+  </div>
+
+  <!-- RIGHT -->
+  <div>
+    <div class="card">
+      <div class="ct orange">Perspective Matrix</div>
+      <span class="dof-badge orange">3×3 Matrix · 8 DOF</span>
+      <div class="mat-wrap" id="pMatBox"></div>
+      <div class="formula" id="pFormulaBox"></div>
+    </div>
+    <div class="card">
+      <div class="ct orange">Geometric Properties</div>
+      <div class="props" id="pPropsBox"></div>
+    </div>
+    <div class="card">
+      <div class="ct orange">Corner Coordinates</div>
+      <table class="ctbl"><thead><tr><th>Pt</th><th>Source</th><th>Warped</th></tr></thead><tbody id="pCoordBody"></tbody></table>
+    </div>
+  </div>
+
+</div>
+</div><!-- /persp-page -->
+
+
+<script>
+// ════ TAB SWITCH ════
+function switchTab(t){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(t==='affine'?'affine-page':'persp-page').classList.add('active');
+  document.getElementById('tabA').className='tab-btn'+(t==='affine'?' ta':'');
+  document.getElementById('tabP').className='tab-btn'+(t==='persp'?' tp':'');
+  if(t==='persp') pRender(); else aRender();
+}
+
+// ════════════════════════════════════════════════════════
+//  AFFINE
+// ════════════════════════════════════════════════════════
+const aCvs=document.getElementById('aCvs');
+const aCtx=aCvs.getContext('2d');
+const ACW=620,ACH=520,ACX=ACW/2,ACY=ACH/2;
+const ACOLORS=['#2563eb','#16a34a','#ea580c','#9333ea'];
+const ASHAPES={
+  square:[[-75,-75],[75,-75],[75,75],[-75,75]],
+  triangle:[[0,-90],[-80,72],[80,72]],
+  house:[[0,-95],[85,-15],[85,75],[-85,75],[-85,-15]],
+  arrow:[[0,-85],[55,-25],[28,-25],[28,80],[-28,80],[-28,-25],[-55,-25]],
+  letter:[[-65,-85],[-65,85],[-30,85],[-30,15],[20,15],[20,-15],[-30,-15],[-30,-50],[35,-50],[35,-85]]
+};
+let aShape='square',aStep='all',aDragging=false,aDragStart=null;
+const AG=id=>parseFloat(document.getElementById(id).value);
+const aSliders=['tx','ty','sx','sy','rot','shx','shy'];
+
+function aReadSliders(){return{tx:AG('tx'),ty:AG('ty'),sx:AG('sx'),sy:AG('sy'),rot:AG('rot'),shx:AG('shx'),shy:AG('shy')};}
+function aBuildMat(p){
+  const a=p.rot*Math.PI/180,c=Math.cos(a),s=Math.sin(a);
+  return[c*p.sx-s*p.shy,c*p.shx-s*p.sy,p.tx, s*p.sx+c*p.shy,s*p.shx+c*p.sy,p.ty];
+}
+function aStepMat(p,step){
+  const z={tx:0,ty:0,sx:1,sy:1,rot:0,shx:0,shy:0};
+  if(step==='all') return aBuildMat(p);
+  if(step==='scale') return aBuildMat({...z,sx:p.sx,sy:p.sy});
+  if(step==='rotate') return aBuildMat({...z,rot:p.rot});
+  if(step==='shear') return aBuildMat({...z,shx:p.shx,shy:p.shy});
+  if(step==='translate') return aBuildMat({...z,tx:p.tx,ty:p.ty});
+  return aBuildMat(p);
+}
+function aApply(m,[x,y]){return[m[0]*x+m[1]*y+m[2],m[3]*x+m[4]*y+m[5]];}
+function aShapeScreen(m){return ASHAPES[aShape].map(p=>{const[x,y]=aApply(m,p);return[ACX+x,ACY+y];});}
+function aShapeOrig(){return ASHAPES[aShape].map(([x,y])=>[ACX+x,ACY+y]);}
+
+// drag
+function aGetPos(e){const r=aCvs.getBoundingClientRect(),sx=ACW/r.width,sy=ACH/r.height;return[(e.clientX-r.left)*sx,(e.clientY-r.top)*sy];}
+function aHit(pos){
+  const m=aStepMat(aReadSliders(),aStep),pts=aShapeScreen(m);
+  for(let i=0;i<pts.length;i++){const dx=pos[0]-pts[i][0],dy=pos[1]-pts[i][1];if(Math.sqrt(dx*dx+dy*dy)<14)return i;}
+  return -1;
+}
+aCvs.addEventListener('mousedown',e=>{const pos=aGetPos(e);if(aHit(pos)>=0){const p=aReadSliders();aDragStart={startPos:pos,startTx:p.tx,startTy:p.ty};aDragging=true;}});
+window.addEventListener('mousemove',e=>{
+  if(!aDragging||!aDragStart)return;
+  const pos=aGetPos(e),dx=pos[0]-aDragStart.startPos[0],dy=pos[1]-aDragStart.startPos[1];
+  document.getElementById('tx').value=Math.max(-200,Math.min(200,aDragStart.startTx+dx));
+  document.getElementById('ty').value=Math.max(-200,Math.min(200,aDragStart.startTy+dy));
+  aUpdateLabels();aRender();
+});
+window.addEventListener('mouseup',()=>{aDragging=false;aDragStart=null;});
+
+function aRender(){
+  aCtx.clearRect(0,0,ACW,ACH);
+  // white bg
+  aCtx.fillStyle='#fff';aCtx.fillRect(0,0,ACW,ACH);
+  if(document.getElementById('showGrid').checked) aDrawGrid();
+  if(document.getElementById('showAxes').checked) aDrawAxes();
+  const p=aReadSliders(),m=aStepMat(p,aStep);
+  const orig=aShapeOrig(),trans=aShapeScreen(m);
+  if(document.getElementById('showGhost').checked) aDrawShape(orig,'rgba(37,99,235,0.07)','rgba(37,99,235,0.3)',1.5,true);
+  if(document.getElementById('showVectors').checked) for(let i=0;i<Math.min(orig.length,4);i++) aArrow(orig[i],trans[i],'rgba(245,158,11,0.55)');
+  const g=aCtx.createLinearGradient(trans[0][0],trans[0][1],trans[Math.floor(trans.length/2)][0],trans[Math.floor(trans.length/2)][1]);
+  g.addColorStop(0,'rgba(37,99,235,0.82)');g.addColorStop(1,'rgba(99,102,241,0.65)');
+  aDrawShape(trans,g,'#1e40af',2,false);
+  trans.forEach(([x,y],i)=>{
+    const c=ACOLORS[i%ACOLORS.length];
+    aCtx.beginPath();aCtx.arc(x,y,9,0,Math.PI*2);aCtx.fillStyle=c+'22';aCtx.fill();
+    aCtx.strokeStyle=c;aCtx.lineWidth=2.5;aCtx.stroke();
+    aCtx.fillStyle='#fff';aCtx.font='bold 9px Nunito,sans-serif';
+    aCtx.textAlign='center';aCtx.textBaseline='middle';aCtx.fillText(i+1,x,y);
+    aCtx.textAlign='start';aCtx.textBaseline='alphabetic';
+  });
+  const[ox,oy]=aApply(m,[0,0]);
+  aCtx.beginPath();aCtx.arc(ACX+ox,ACY+oy,5,0,Math.PI*2);aCtx.fillStyle='#dc2626';aCtx.fill();aCtx.strokeStyle='#fff';aCtx.lineWidth=2;aCtx.stroke();
+  aUpdateUI(p,m,trans);
+}
+function aDrawShape(pts,fill,stroke,lw,dashed){
+  aCtx.beginPath();pts.forEach(([x,y],i)=>i===0?aCtx.moveTo(x,y):aCtx.lineTo(x,y));aCtx.closePath();
+  aCtx.fillStyle=fill;aCtx.fill();aCtx.setLineDash(dashed?[6,4]:[]);aCtx.strokeStyle=stroke;aCtx.lineWidth=lw;aCtx.stroke();aCtx.setLineDash([]);
+}
+function aDrawGrid(){
+  aCtx.strokeStyle='#e2e8f0';aCtx.lineWidth=1;
+  for(let x=0;x<ACW;x+=40){aCtx.beginPath();aCtx.moveTo(x,0);aCtx.lineTo(x,ACH);aCtx.stroke();}
+  for(let y=0;y<ACH;y+=40){aCtx.beginPath();aCtx.moveTo(0,y);aCtx.lineTo(ACW,y);aCtx.stroke();}
+}
+function aDrawAxes(){
+  aCtx.strokeStyle='rgba(30,41,59,0.18)';aCtx.lineWidth=1.5;
+  aCtx.beginPath();aCtx.moveTo(0,ACY);aCtx.lineTo(ACW,ACY);aCtx.stroke();
+  aCtx.beginPath();aCtx.moveTo(ACX,0);aCtx.lineTo(ACX,ACH);aCtx.stroke();
+  aCtx.fillStyle='rgba(30,41,59,0.28)';aCtx.font='bold 11px Nunito';aCtx.fillText('x',ACW-18,ACY-8);aCtx.fillText('y',ACX+8,14);
+  aCtx.fillStyle='rgba(100,116,139,0.5)';aCtx.font='9px JetBrains Mono';aCtx.textAlign='center';
+  for(let i=-7;i<=7;i++){if(i===0)continue;aCtx.fillText(i*40,ACX+i*40,ACY+14);aCtx.textAlign='right';aCtx.fillText(i*40,ACX-4,ACY+i*40+4);aCtx.textAlign='center';}
+  aCtx.textAlign='start';
+}
+function aArrow([x1,y1],[x2,y2],color){
+  aCtx.strokeStyle=color;aCtx.lineWidth=1.5;aCtx.setLineDash([3,3]);aCtx.beginPath();aCtx.moveTo(x1,y1);aCtx.lineTo(x2,y2);aCtx.stroke();aCtx.setLineDash([]);
+  const ang=Math.atan2(y2-y1,x2-x1);aCtx.fillStyle=color;aCtx.beginPath();aCtx.moveTo(x2,y2);
+  aCtx.lineTo(x2-9*Math.cos(ang-.4),y2-9*Math.sin(ang-.4));aCtx.lineTo(x2-9*Math.cos(ang+.4),y2-9*Math.sin(ang+.4));aCtx.closePath();aCtx.fill();
+}
+function aUpdateLabels(){
+  const p=aReadSliders();
+  document.getElementById('vTx').textContent=p.tx.toFixed(0)+' px';
+  document.getElementById('vTy').textContent=p.ty.toFixed(0)+' px';
+  document.getElementById('vSx').textContent=p.sx.toFixed(2);
+  document.getElementById('vSy').textContent=p.sy.toFixed(2);
+  document.getElementById('vRot').textContent=p.rot.toFixed(1)+'°';
+  document.getElementById('vShx').textContent=p.shx.toFixed(2);
+  document.getElementById('vShy').textContent=p.shy.toFixed(2);
+}
+function aUpdateUI(p,m,trans){
+  const f=v=>v.toFixed(3).replace('-0.000','0.000');
+  document.getElementById('aMatBox').innerHTML=`<div class="mrow"><span class="mbracket">[</span><div>
+    <div class="mrow" style="gap:5px"><span class="mcell hi-blue">${f(m[0])}</span><span class="mcell hi-blue">${f(m[1])}</span><span class="mcell hi-blue">${f(m[2])}</span></div>
+    <div class="mrow" style="gap:5px;margin-top:4px"><span class="mcell hi-blue">${f(m[3])}</span><span class="mcell hi-blue">${f(m[4])}</span><span class="mcell hi-blue">${f(m[5])}</span></div>
+    <div class="mrow" style="gap:5px;margin-top:4px;"><span class="mcell faded">0.000</span><span class="mcell faded">0.000</span><span class="mcell faded">1.000</span></div>
+    </div><span class="mbracket">]</span></div>`;
+  document.getElementById('aFormulaBox').innerHTML=`<span class="fv-blue">x'</span> = ${f(m[0])}·x + ${f(m[1])}·y + ${f(m[2])}<br><span class="fv-blue">y'</span> = ${f(m[3])}·x + ${f(m[4])}·y + ${f(m[5])}`;
+  const det=m[0]*m[4]-m[1]*m[3];
+  const rigid=Math.abs(Math.abs(det)-1)<0.05&&Math.abs(p.shx)<0.05&&Math.abs(p.shy)<0.05;
+  const uniform=Math.abs(p.sx-p.sy)<0.05,hasShear=Math.abs(p.shx)>.05||Math.abs(p.shy)>.05;
+  document.getElementById('aPropsBox').innerHTML=`
+    <div class="prop ${Math.abs(det)>.01?'yes':'no'}"><span>${Math.abs(det)>.01?'✓':'✗'}</span> Invertible &nbsp;<small>(det = ${det.toFixed(3)})</small></div>
+    <div class="prop yes"><span>✓</span> Preserves parallel lines</div>
+    <div class="prop yes"><span>✓</span> Preserves collinearity</div>
+    <div class="prop ${rigid?'yes':'no'}"><span>${rigid?'✓':'✗'}</span> Rigid transform</div>
+    <div class="prop ${uniform&&!hasShear?'yes':'no'}"><span>${uniform&&!hasShear?'✓':'✗'}</span> Similarity transform</div>
+    <div class="prop ${det>0?'yes':'no'}"><span>${det>0?'✓':'✗'}</span> Orientation preserving</div>`;
+  document.getElementById('aCoordBody').innerHTML=ASHAPES[aShape].map(([x,y],i)=>{
+    const[px,py]=trans[i],c=ACOLORS[i%ACOLORS.length];
+    return`<tr><td><span class="ptag" style="background:${c}">${i+1}</span></td><td style="color:#64748b">(${x},${y})</td><td style="color:#16a34a;font-weight:700">(${(px-ACX).toFixed(1)},${(py-ACY).toFixed(1)})</td></tr>`;
+  }).join('');
+  document.getElementById('aDecompBox').innerHTML=`<b>Translation:</b> (${p.tx.toFixed(1)}, ${p.ty.toFixed(1)}) px<br><b>Scale:</b> sx=${p.sx.toFixed(2)}, sy=${p.sy.toFixed(2)}<br><b>Rotation:</b> ${p.rot.toFixed(1)}° = ${(p.rot*Math.PI/180).toFixed(4)} rad<br><b>Shear:</b> shx=${p.shx.toFixed(2)}, shy=${p.shy.toFixed(2)}<br><b>det(A):</b> ${det.toFixed(4)}`;
+}
+const APRESETS=[
+  {n:'Identity',   v:{tx:0,ty:0,sx:1,sy:1,rot:0,shx:0,shy:0}},
+  {n:'Translate →',v:{tx:110,ty:0,sx:1,sy:1,rot:0,shx:0,shy:0}},
+  {n:'Scale 1.5×', v:{tx:0,ty:0,sx:1.5,sy:1.5,rot:0,shx:0,shy:0}},
+  {n:'Scale X',    v:{tx:0,ty:0,sx:2,sy:1,rot:0,shx:0,shy:0}},
+  {n:'Rotate 45°', v:{tx:0,ty:0,sx:1,sy:1,rot:45,shx:0,shy:0}},
+  {n:'Rotate 90°', v:{tx:0,ty:0,sx:1,sy:1,rot:90,shx:0,shy:0}},
+  {n:'Shear X',    v:{tx:0,ty:0,sx:1,sy:1,rot:0,shx:0.6,shy:0}},
+  {n:'Shear Y',    v:{tx:0,ty:0,sx:1,sy:1,rot:0,shx:0,shy:0.5}},
+  {n:'Flip H',     v:{tx:0,ty:0,sx:-1,sy:1,rot:0,shx:0,shy:0}},
+  {n:'Flip V',     v:{tx:0,ty:0,sx:1,sy:-1,rot:0,shx:0,shy:0}},
+  {n:'Shrink 0.5×',v:{tx:0,ty:0,sx:0.5,sy:0.5,rot:0,shx:0,shy:0}},
+  {n:'Rot+Scale',  v:{tx:40,ty:-30,sx:1.3,sy:1.3,rot:30,shx:0,shy:0}},
+];
+function aBuildPresets(){
+  document.getElementById('aPresetsDiv').innerHTML=APRESETS.map((p,i)=>`<button class="pre blue" onclick="aApplyPreset(${i})">${p.n}</button>`).join('');
+}
+function aApplyPreset(i){
+  Object.entries(APRESETS[i].v).forEach(([k,v])=>{const el=document.getElementById(k);if(el)el.value=v;});
+  aUpdateLabels();aRender();
+}
+function aSetShape(s){
+  aShape=s;
+  document.querySelectorAll('#affine-page .sbtn').forEach(b=>b.classList.remove('active'));
+  event.target.classList.add('active');
+  aRender();
+}
+function aSetStep(s){
+  aStep=s;document.querySelectorAll('.step-badge').forEach(b=>b.classList.toggle('on',b.id==='step-'+s));aRender();
+}
+function aReset(){
+  [{id:'tx',v:0},{id:'ty',v:0},{id:'sx',v:1},{id:'sy',v:1},{id:'rot',v:0},{id:'shx',v:0},{id:'shy',v:0}].forEach(({id,v})=>document.getElementById(id).value=v);
+  aUpdateLabels();aRender();
+}
+function aRandom(){
+  document.getElementById('tx').value=(Math.random()-.5)*200;
+  document.getElementById('ty').value=(Math.random()-.5)*160;
+  document.getElementById('sx').value=(.4+Math.random()*1.8).toFixed(2);
+  document.getElementById('sy').value=(.4+Math.random()*1.8).toFixed(2);
+  document.getElementById('rot').value=((Math.random()-.5)*180).toFixed(0);
+  document.getElementById('shx').value=((Math.random()-.5)*1.2).toFixed(2);
+  document.getElementById('shy').value=((Math.random()-.5)*1.2).toFixed(2);
+  aUpdateLabels();aRender();
+}
+aSliders.forEach(id=>document.getElementById(id).addEventListener('input',()=>{aUpdateLabels();aRender();}));
+['showGhost','showGrid','showAxes','showVectors'].forEach(id=>document.getElementById(id).addEventListener('change',aRender));
+
+
+// ════════════════════════════════════════════════════════
+//  PERSPECTIVE
+// ════════════════════════════════════════════════════════
+const pCvs=document.getElementById('pCvs');
+const pCtx=pCvs.getContext('2d');
+const PCW=620,PCH=520;
+const PCOLORS=['#ea580c','#9333ea','#16a34a','#2563eb'];
+
+let pSrc=[[130,110],[490,110],[490,390],[130,390]];
+let pDst=[[130,110],[490,110],[490,390],[130,390]];
+let pMat=[1,0,0,0,1,0,0,0,1];
+let pDragging=null;
+
+function computeH(src,dst){
+  const A=[],b=[];
+  for(let i=0;i<4;i++){
+    const[x,y]=src[i],[u,v]=dst[i];
+    A.push([x,y,1,0,0,0,-u*x,-u*y]);b.push(u);
+    A.push([0,0,0,x,y,1,-v*x,-v*y]);b.push(v);
+  }
+  const h=gaussSolve(A,b);return h?[h[0],h[1],h[2],h[3],h[4],h[5],h[6],h[7],1]:null;
+}
+function gaussSolve(A,b){
+  const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+  for(let c=0;c<n;c++){
+    let mx=c;for(let r=c+1;r<n;r++) if(Math.abs(M[r][c])>Math.abs(M[mx][c])) mx=r;
+    [M[c],M[mx]]=[M[mx],M[c]];if(Math.abs(M[c][c])<1e-12)return null;
+    for(let r=0;r<n;r++){if(r===c)continue;const f=M[r][c]/M[c][c];for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}
+  }
+  return M.map((r,i)=>r[n]/r[i]);
+}
+function pApply(m,[x,y]){const d=m[6]*x+m[7]*y+1;return[(m[0]*x+m[1]*y+m[2])/d,(m[3]*x+m[4]*y+m[5])/d];}
+
+function pGetPos(e){const r=pCvs.getBoundingClientRect(),sx=PCW/r.width,sy=PCH/r.height;return[(e.clientX-r.left)*sx,(e.clientY-r.top)*sy];}
+function pHit(pos){
+  for(let i=0;i<pDst.length;i++){const dx=pos[0]-pDst[i][0],dy=pos[1]-pDst[i][1];if(Math.sqrt(dx*dx+dy*dy)<15)return i;}
+  return -1;
+}
+pCvs.addEventListener('mousedown',e=>{const pos=pGetPos(e);const idx=pHit(pos);if(idx>=0)pDragging=idx;});
+window.addEventListener('mousemove',e=>{
+  if(pDragging===null)return;
+  const pos=pGetPos(e);
+  pDst[pDragging]=[Math.max(10,Math.min(PCW-10,pos[0])),Math.max(10,Math.min(PCH-10,pos[1]))];
+  const h=computeH(pSrc,pDst);if(h)pMat=h;pRender();
+});
+window.addEventListener('mouseup',()=>pDragging=null);
+
+function pRender(){
+  pCtx.clearRect(0,0,PCW,PCH);
+  pCtx.fillStyle='#fff';pCtx.fillRect(0,0,PCW,PCH);
+
+  // grid
+  if(document.getElementById('pShowGrid').checked){
+    pCtx.strokeStyle='#e2e8f0';pCtx.lineWidth=1;
+    for(let x=0;x<PCW;x+=40){pCtx.beginPath();pCtx.moveTo(x,0);pCtx.lineTo(x,PCH);pCtx.stroke();}
+    for(let y=0;y<PCH;y+=40){pCtx.beginPath();pCtx.moveTo(0,y);pCtx.lineTo(PCW,y);pCtx.stroke();}
+  }
+
+  // axes
+  if(document.getElementById('pShowAxes').checked){
+    const cx=PCW/2,cy=PCH/2;
+    pCtx.strokeStyle='rgba(30,41,59,0.18)';pCtx.lineWidth=1.5;
+    pCtx.beginPath();pCtx.moveTo(0,cy);pCtx.lineTo(PCW,cy);pCtx.stroke();
+    pCtx.beginPath();pCtx.moveTo(cx,0);pCtx.lineTo(cx,PCH);pCtx.stroke();
+    pCtx.fillStyle='rgba(30,41,59,0.28)';pCtx.font='bold 11px Nunito';pCtx.fillText('x',PCW-18,cy-8);pCtx.fillText('y',cx+8,14);
+  }
+
+  // vanishing lines
+  if(document.getElementById('pShowVanish').checked) pDrawVanishLines();
+
+  // source quad ghost
+  if(document.getElementById('pShowSrc').checked){
+    pCtx.beginPath();pSrc.forEach(([x,y],i)=>i===0?pCtx.moveTo(x,y):pCtx.lineTo(x,y));pCtx.closePath();
+    pCtx.fillStyle='rgba(37,99,235,0.05)';pCtx.fill();
+    pCtx.strokeStyle='rgba(37,99,235,0.35)';pCtx.lineWidth=1.5;pCtx.setLineDash([6,4]);pCtx.stroke();pCtx.setLineDash([]);
+    pSrc.forEach(([x,y])=>{pCtx.beginPath();pCtx.arc(x,y,4,0,Math.PI*2);pCtx.fillStyle='#2563eb';pCtx.fill();});
+  }
+
+  // warped quad fill + inner grid
+  pDrawWarpedQuad();
+
+  // warped outline
+  pCtx.beginPath();pDst.forEach(([x,y],i)=>i===0?pCtx.moveTo(x,y):pCtx.lineTo(x,y));pCtx.closePath();
+  pCtx.strokeStyle='#16a34a';pCtx.lineWidth=2;pCtx.stroke();
+
+  // handles
+  pDst.forEach(([x,y],i)=>{
+    const c=PCOLORS[i];
+    pCtx.beginPath();pCtx.arc(x,y,11,0,Math.PI*2);pCtx.fillStyle=c+'22';pCtx.fill();
+    pCtx.strokeStyle=c;pCtx.lineWidth=2.5;pCtx.stroke();
+    pCtx.fillStyle='#fff';pCtx.font='bold 10px Nunito,sans-serif';
+    pCtx.textAlign='center';pCtx.textBaseline='middle';pCtx.fillText(i+1,x,y);
+    pCtx.textAlign='start';pCtx.textBaseline='alphabetic';
+    pCtx.fillStyle=c;pCtx.font='bold 10px JetBrains Mono';
+    pCtx.fillText(`(${Math.round(x)},${Math.round(y)})`,x+14,y-8);
+  });
+
+  pUpdateUI();
+}
+
+function pDrawWarpedQuad(){
+  const pts=pDst;
+  const g=pCtx.createLinearGradient(pts[0][0],pts[0][1],pts[2][0],pts[2][1]);
+  g.addColorStop(0,'rgba(234,88,12,0.18)');g.addColorStop(1,'rgba(147,51,234,0.14)');
+  pCtx.beginPath();pts.forEach(([x,y],i)=>i===0?pCtx.moveTo(x,y):pCtx.lineTo(x,y));pCtx.closePath();
+  pCtx.fillStyle=g;pCtx.fill();
+  // projected inner grid
+  pCtx.strokeStyle='rgba(234,88,12,0.2)';pCtx.lineWidth=1;
+  const DIVS=6;
+  for(let i=1;i<DIVS;i++){
+    const t=i/DIVS;
+    const hL=[pSrc[0][0]+(pSrc[3][0]-pSrc[0][0])*t,pSrc[0][1]+(pSrc[3][1]-pSrc[0][1])*t];
+    const hR=[pSrc[1][0]+(pSrc[2][0]-pSrc[1][0])*t,pSrc[1][1]+(pSrc[2][1]-pSrc[1][1])*t];
+    const phL=pApply(pMat,hL),phR=pApply(pMat,hR);
+    pCtx.beginPath();pCtx.moveTo(phL[0],phL[1]);pCtx.lineTo(phR[0],phR[1]);pCtx.stroke();
+    const vT=[pSrc[0][0]+(pSrc[1][0]-pSrc[0][0])*t,pSrc[0][1]+(pSrc[1][1]-pSrc[0][1])*t];
+    const vB=[pSrc[3][0]+(pSrc[2][0]-pSrc[3][0])*t,pSrc[3][1]+(pSrc[2][1]-pSrc[3][1])*t];
+    const pvT=pApply(pMat,vT),pvB=pApply(pMat,vB);
+    pCtx.beginPath();pCtx.moveTo(pvT[0],pvT[1]);pCtx.lineTo(pvB[0],pvB[1]);pCtx.stroke();
+  }
+}
+function pDrawVanishLines(){
+  const pts=pDst;
+  pCtx.strokeStyle='rgba(234,88,12,0.12)';pCtx.lineWidth=1;pCtx.setLineDash([4,4]);
+  pDrawExtLine(pts[0],pts[1]);pDrawExtLine(pts[3],pts[2]);
+  pDrawExtLine(pts[0],pts[3]);pDrawExtLine(pts[1],pts[2]);
+  pCtx.setLineDash([]);
+}
+function pDrawExtLine([x1,y1],[x2,y2]){
+  const dx=x2-x1,dy=y2-y1,L=3000;
+  pCtx.beginPath();pCtx.moveTo(x1-dx*L,y1-dy*L);pCtx.lineTo(x2+dx*L,y2+dy*L);pCtx.stroke();
+}
+
+function pUpdateUI(){
+  const f=v=>v.toFixed(5);const m=pMat;
+  document.getElementById('pMatBox').innerHTML=`<div class="mrow"><span class="mbracket">[</span><div>
+    <div class="mrow" style="gap:5px"><span class="mcell hi-orange">${f(m[0])}</span><span class="mcell hi-orange">${f(m[1])}</span><span class="mcell hi-orange">${f(m[2])}</span></div>
+    <div class="mrow" style="gap:5px;margin-top:4px"><span class="mcell hi-orange">${f(m[3])}</span><span class="mcell hi-orange">${f(m[4])}</span><span class="mcell hi-orange">${f(m[5])}</span></div>
+    <div class="mrow" style="gap:5px;margin-top:4px"><span class="mcell hi-orange">${f(m[6])}</span><span class="mcell hi-orange">${f(m[7])}</span><span class="mcell faded">1.00000</span></div>
+    </div><span class="mbracket">]</span></div>`;
+  document.getElementById('pFormulaBox').innerHTML=
+    `<span class="fv-orange">wx'</span> = P₁₁·x + P₁₂·y + P₁₃<br><span class="fv-orange">wy'</span> = P₂₁·x + P₂₂·y + P₂₃<br><span class="fv-orange">w</span>  = P₃₁·x + P₃₂·y + 1`;
+  const det=m[0]*(m[4]-m[5]*m[7])-m[1]*(m[3]-m[5]*m[6])+m[2]*(m[3]*m[7]-m[4]*m[6]);
+  const isAffine=Math.abs(m[6])<1e-5&&Math.abs(m[7])<1e-5;
+  document.getElementById('pPropsBox').innerHTML=`
+    <div class="prop ${Math.abs(det)>.001?'yes':'no'}"><span>${Math.abs(det)>.001?'✓':'✗'}</span> Invertible &nbsp;<small>(det ≈ ${det.toFixed(3)})</small></div>
+    <div class="prop no"><span>✗</span> Does NOT preserve parallel lines</div>
+    <div class="prop yes"><span>✓</span> Preserves straight lines</div>
+    <div class="prop yes"><span>✓</span> Preserves collinearity</div>
+    <div class="prop no"><span>✗</span> Scale varies with depth</div>
+    <div class="prop ${isAffine?'yes':'no'}"><span>${isAffine?'≈':'✗'}</span> ${isAffine?'Currently affine (P₃₁≈P₃₂≈0)':'True perspective warp active'}</div>`;
+  document.getElementById('pCoordBody').innerHTML=pSrc.map(([x,y],i)=>{
+    const[dx,dy]=pApply(pMat,[x,y]);const c=PCOLORS[i];
+    return`<tr><td><span class="ptag" style="background:${c}">${i+1}</span></td><td style="color:#64748b">(${x},${y})</td><td style="color:#16a34a;font-weight:700">(${dx.toFixed(1)},${dy.toFixed(1)})</td></tr>`;
+  }).join('');
+}
+
+const PPRESETS=[
+  {n:'Identity',    d:[[130,110],[490,110],[490,390],[130,390]]},
+  {n:'Trapezoid ↑', d:[[180,130],[440,130],[490,390],[130,390]]},
+  {n:'Trapezoid ↓', d:[[130,110],[490,110],[440,370],[180,370]]},
+  {n:'Tilt Left',   d:[[160,80],[460,130],[440,390],[140,380]]},
+  {n:'Tilt Right',  d:[[130,130],[460,80],[450,380],[150,390]]},
+  {n:'Keystone',    d:[[170,110],[450,110],[490,390],[130,390]]},
+  {n:'Wide Angle',  d:[[80,80],[560,80],[510,420],[110,420]]},
+  {n:'Pinched',     d:[[200,110],[420,110],[490,390],[130,390]]},
+];
+function pBuildPresets(){
+  document.getElementById('pPresetsDiv').innerHTML=PPRESETS.map((p,i)=>`<button class="pre orange" onclick="pApplyPreset(${i})">${p.n}</button>`).join('');
+}
+function pApplyPreset(i){pDst=PPRESETS[i].d.map(p=>[...p]);const h=computeH(pSrc,pDst);if(h)pMat=h;pRender();}
+function pReset(){pDst=[[130,110],[490,110],[490,390],[130,390]];pMat=[1,0,0,0,1,0,0,0,1];pRender();}
+['pShowSrc','pShowGrid','pShowAxes','pShowVanish'].forEach(id=>document.getElementById(id).addEventListener('change',pRender));
+
+// ══ INIT ══
+aBuildPresets();aUpdateLabels();aRender();
+pBuildPresets();pRender();
+</script>
+</body>
+</html>
